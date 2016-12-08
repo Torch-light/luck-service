@@ -4,131 +4,207 @@ var cheerio = require('cheerio');
 var superagent = require('superagent');
 var fs = require('fs');
 var http = require('http');
-var n = 0;
 var item = [];
+var item1 = [];
 var data = [];
-var t;
-var miunt=1000;
-function getNum(action) {
-    console.log("爬取开奖");
-    // superagent.get(action)
-    // // console.log('13213213')
-    // 	.end(function (err,sres,next) {
-    // 		if (err) {
-    // 			return next(err);
-    // 		}
-    // 		 var $=cheerio.load(sres.text);
-    // 		// $('.data-listbody').eq(1).text();
-    // 		// console.log($('.datalist').eq(1).text());
-    // 		var qh=$('#data-listbody tr').eq(1).text();
-    // 		console.log(qh)
-    // 		clearTimeout(t);
-    // 		get(action)
-    // 	});
-}
-var get = function(action) {
-    console.log("爬取时间");
+var onceMysql = 1;
+var loop;
+var flag;
+var flagMysql;
+var system=false;
+var action = 'https://www.zao28.com/xy28';
+var mysql = require('mysql');
 
-//     s=setInterval(function() {
-//     superagent.get(action).end(function(err, sres, next) {
-//         if (err) {
-//             return next(err);
-//         }
-//         var $ = cheerio.load(sres.text);
-//         var qh = $('#data-listbody tr').eq(1).text();
-//         miunt = $('#opentime .time').text();
-//         miunt = miunt * 1000;
-    
-//         console.log('当前期数' + qh);
-//         console.log(miunt)
-//     });
-// }, miunt);
-    superagent.get(action).end(function(err, sres, next) {
-        if (err) {
-            return next(err);
-        }
-        var $ = cheerio.load(sres.text);
-        var qh = $('#data-listbody tr').eq(1).text();
-        var miunt = $('#opentime .time').text();
-        miunt = miunt * 1000;
-        console.log(miunt)
-        console.log('当前期数' + qh);
-        s=setTimeout(function(){
-        	console.log('第二次')
-        },miunt);
-        console.log('定时开始')
-    //     // $('#panle').each(function(i,element){
-    //     // 	console.log(i);
-    //     // })
-    //     // $('#panle').nextAll('tbody').each(function(i,m){
-    //     // 	console.log(i);
-    //     // 	console.log(m);
-    //     // });
-    //     // $('#panle').find('tbody').find('tr').each(function(i,m){
-    //     // 	console.log(m);
-    //     // });
-    //     // console.log(sres.text)
-    //     // console.log(sres.text);
-    //     // $('tr').each(function (i,element) {
-    //     // 	$(element).each(function (i,element) {		
-    //     // 			console.log(i);
-    //     // 		item.push({
-    //     // 		 '期数':$(element).val(),
-    //     // 		 '开奖时间':$(element).val(),
-    //     // 		 '开奖结果':$(element).val()
-    //     // 	});				
-    //     // 	})
-    //     // })
-    //     // n=n+1;
-    //     // 	fs.writeFile('data.txt',sres.text, function(err) {
-    //     // 	if (err) {
-    //     // 		return console.error(err);
-    //     // 	}
-    //     // 	console.log("写入成功");
-    //     // })
+function selectMysql(obj) {
+    var connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'assinsass',
+        database: 'luck'
     });
-    //item=item.join('<br/>')
-    // 	app.get('/',function(req,res,next) {	
-    // 		superagent.get('https://cnodejs.org/')
-    // 		.query({
-    // 			tab: 'all'
-    // 		})
-    // 		.query({
-    // 			page:n                        //tab=all&page=2
-    // 		})
-    // 		.end(function (err,sres) {
-    // 			if (err) {
-    // 				return next(err);
-    // 			}
-    // 			var $=cheerio.load(sres.text);
-    // 			$('.cell').each(function (i,element) {
-    // 				$(element).each(function (i,element) {					
-    // 					item.push({
-    // 					 title:$(element).find('.topic_title').attr('title'),
-    // 					  href:$(element).find('.topic_title').attr('href'),
-    // 					  user:$(element).find('img').attr('title'),
-    // 				});				
-    // 				})
-    // 			})
-    // 			res.send(item);
-    // 		});
-    // 		n=n+1;
-    // 		console.log('page'+n);
-    // 		console.log('size'+item.length)
-    // });
+    connection.connect();
+    var select = 'SELECT *FROM CATHECTIC WHERE id=?';
+    var id = [];
+    id[0] = obj[0];
+    connection.query(select, id, function(err, rows, fields) {
+        if (err) {
+            throw err.message;
+        }
+        onceMysql = 2;
+        if (rows.length == 0) {
+            console.log('没有该条数据');
+            insertMysql(data);
+            return true;
+        } else {
+             // setSystem([0,0]);
+            console.log('有该条数据');
+             // setSystem([0,0]);
+            return false;
+        }
+    })
+    connection.end();
 }
 
+function insertMysql(obj) {
+    var connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'assinsass',
+        database: 'luck'
+    });
+    connection.connect();
+    var insert = 'INSERT INTO CATHECTIC (id,num,result,created_at)values(?,?,?,?)';
+    connection.query(insert, obj, function(err, rows, fields) {
+        if (err) {
+            throw err.message;
+        }
+    })
+    connection.end();
+}
+function setSystem(obj){
+     var connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'assinsass',
+        database: 'luck'
+    });
+    connection.connect();
+    var insert = 'UPDATE  SYSTEM set updateNum=?,updatePoints=? WHERE id=0';
+    connection.query(insert, obj, function(err, rows, fields) {
+        if (err) {
+            throw err.message;
+        }
+    })
+    connection.end();
+    system=true;
+};
+function circulation(n) {
+    if (!flag) {
+        loop = setInterval(function() {
+            getNum(action);
+        }, n)
+        flag = true;
+    }
+}
+
+function getNum() {
+    try {
+        console.log("第二次爬取开奖");
+        superagent.get(action).end(function(err, sres, next) {
+            item1 = [];
+            var $ = cheerio.load(sres.text);
+            var qh = $('#data-listbody tr').eq(1);
+            $(qh).children().each(function(i, e) {
+                if (i != 2) {
+                    item1.push($(e).text())
+                } else {
+                    item1.push($(e).text());
+                    item1.push($(e).children().text())
+                };
+            });
+            if(!system){
+                    setSystem([1,0]);    
+                    console.log('系统占用');
+            }
+            if (item[0] == item1[0]) {
+                circulation(5000);
+            } else {
+                clearInterval(loop);
+                data[0] = item1[0];
+                data[1] = item1[2];
+                if (item1[3] >= 13) {
+                    data[2] = '大';
+                } else {
+                    data[2] = '小';
+                }
+                if (item1[3] % 2 == 0) {
+
+                    data[2] += '-双';
+                } else {
+                    data[2] += '-单';
+                }
+                console.log(item1[3] % 2);
+                console.log(item1[3] % 2 == 0);
+                data[2] += '-操' + item1[3];
+                console.log('item1[3]' + item1[3]);
+                data[3] = item1[1];
+                console.log(data);
+                insertMysql(data);
+                setSystem([0,0]);
+                loop = null;
+                s = setTimeout(function() {
+                    get();
+                }, 2000);
+            }
+        });
+    } catch (e) {
+        console.log(e.message);
+        getNum();
+    }
+}
+var get = function() {
+    try {
+        superagent.get(action).end(function(err, sres, next) {
+            if (err) {
+                return next(err);
+            }
+            item = [];
+            var $ = cheerio.load(sres.text);
+            var qh = $('#data-listbody tr').eq(1);
+            $(qh).children().each(function(i, e) {
+                if (i != 2) {
+                    item.push($(e).text())
+                } else {
+                    item.push($(e).text());
+                    item.push($(e).children().text())
+                };
+            });
+            data[0] = item[0];
+            data[1] = item[2];
+            if (item[3] >= 13) {
+                data[2] = '大';
+            } else {
+                data[2] = '小';
+            }
+            if (item1[3] % 2 == 0) {
+                data[2] += '-双';
+            } else {
+                data[2] += '-单';
+            }
+            data[2] += '-操' + item[3];
+            // data[2] = item[3];
+            data[3] = item[1];
+            var miunt = $('#opentime .time').text();
+            miunt = (miunt * 1000) + 2000;
+            if (onceMysql == 1) {
+                selectMysql(data);
+            }
+        
+            console.log(miunt)
+            s = setTimeout(function() {
+                flag = false;
+                
+                getNum();
+            }, miunt);
+            //     //   fs.writeFile('data.txt',sres.text, function(err) {
+            //     //   if (err) {
+            //     //       return console.error(err);
+            //     //   }
+            //     //   console.log("写入成功");
+            //     // })
+        });
+    } catch (e) {
+        console.log(e.message);
+        get();
+    }
+}
 var setInt = function() {
     //setInterval(get,2000,'https://cnodejs.org/');
     // get('http://www.pc28.am/')
     // get('http://www.pceggs.com/')
-    get('https://www.zao28.com/xy28')
+    get(action)
         // get('http://www.28shence.com/xxw.php?3.1.1')
         // get('https://cnodejs.org/');
         // get('http://dandan28.com/mobile.php');
 }
 exports.setint = setInt;
-//setInt();
-app.listen(3880, function() {
-    console.log('爬取数据');
-})
