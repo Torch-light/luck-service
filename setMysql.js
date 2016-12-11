@@ -90,5 +90,14 @@ var setmysql = {
             }
         })
     },
+    setAction: function(obj) {
+        var SELECT = 'UPDATE ACTION SET PRIZE=? WHERE id=?';
+          console.log('有人中奖了更新数据');
+        connection.query(SELECT, obj, function(err, rows, fields) {
+            if (err) {
+                throw err.message;
+            }
+        })
+    }
 }
 exports.setmysql = setmysql;
