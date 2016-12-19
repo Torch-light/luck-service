@@ -17,11 +17,12 @@ var action = 'https://www.zao28.com/xy28';
 var setMysql = require('./setMysql');
 var app = require('http').createServer(handler);
 var io = require('socket.io')(app);
+var onceGet=1;
 
 var Redis = require('ioredis');
 var redis = new Redis();
 
-app.listen(8805, function () {
+app.listen(8808, function () {
   console.log('Server is running!') ;
 });
 
@@ -47,6 +48,9 @@ redis.psubscribe('ac*', function (err, count) {
 redis.psubscribe('re*', function (err, count) {
   console.log('监听re');
 });
+redis.psubscribe('ca*', function (err, count) {
+  console.log('监听ca');
+});
 
 redis.on('pmessage', function (subscrbed, channel, message) {
   message = JSON.parse(message);
@@ -55,9 +59,16 @@ redis.on('pmessage', function (subscrbed, channel, message) {
    io.emit('action-0',message.data.user);
   }
   if(subscrbed.match(/re/)){
+    console.log(message);
     console.log(channel);
     io.emit(channel,message.data);
-    io.emit('rechange-0',message.data.message);
+    io.emit('recharge-0',message.data.message);
+  }
+   if(subscrbed.match(/ca/)){
+    console.log(channel);
+    io.emit(channel,message.data);
+    io.emit('cash-0',message.data.message);
+    
   }
 });
 function circulation(n) {
@@ -73,11 +84,13 @@ function updateMysql() {
     async.waterfall([
         function(callback) {
             MQ.selectMysql(data, function(result) {
+
                 console.log('更新1');
                 callback(null, result);
             });
         },
         function(arg1, callback) {
+             console.log('报错位置的数据'+JSON.stringify(arg1))
             MQ.insertMysql(arg1, function(result) {
                 console.log('更新2');
                 callback(null, result);
@@ -94,16 +107,21 @@ function updateMysql() {
             arg1.forEach(function(re) {
                 console.log('更新4');
                 console.log('更新积分比较' + re);
-                console.log(data[2]);
+                console.log('本次结果'+data[2]);
                 if (data[2].match(new RegExp(re.action))) {
-                    var point = re.money * re.multiple;
+                    let point = re.money * re.multiple;
+                    console.log('该用户积分增加'+point);
                     MQ.setAction([1, re.id]);
+                    console.log(re.name);
+                    console.log('投注'+re.action);
                     MQ.setPoints([point, re.name]);
+                       // callback(null,point);
                 } else {
                     console.log('没有相同的');
                 }
             });
         }
+
     ], function(err) {
         if (err) {
             console.log(err);
@@ -115,7 +133,15 @@ function updateMysql() {
 
 function getNum() {
     console.log("第二次爬取开奖");
+    onceGet++;
+ 
     superagent.get(action).end(function(err, sres, next) {
+        if(onceGet>20){
+        onceGet=1;
+        onceMysql=1;
+        get();
+        return false;
+        }
         if (err) {
             setTimeout(function() {
                 get();
@@ -142,13 +168,12 @@ function getNum() {
         }
         if (item[0] == item1[0]) {
             if (!flag) {
-                circulation(5000);
+                circulation(10000);
                 flag = true;
             }
            
-        } else {
+        } else if(item1[0]){
             system = false;
-            
             if(loop){
                 console.log('清除定时器');
             clearInterval(loop);
@@ -171,6 +196,7 @@ function getNum() {
             system = false;
             loop = null;
             MQ.setSystem([0, 0]);
+            io.emit('result-0',item1);
             s = setTimeout(function() {
             console.log('loop'+loop);
                 get();

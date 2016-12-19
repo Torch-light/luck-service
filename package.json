@@ -16,5 +16,8 @@
     "superagent": "^2.0.0",
     "ioredis": "^1.15.1",
     "socket.io": "^1.5.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.20.0"
   }
 }
